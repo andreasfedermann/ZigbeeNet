@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using ZigBeeNet.Hardware.Digi.XBee.Internal;
 using ZigBeeNet.Hardware.Digi.XBee.Internal.Protocol;
+using ZigBeeNet.Hardware.Digi.XBee.Internal.Settings;
 using ZigBeeNet.Security;
 using ZigBeeNet.Transport;
 
@@ -20,6 +21,7 @@ namespace ZigBeeNet.Hardware.Digi.XBee
         private IZigBeeTransportReceive _zigBeeTransportReceive;
         private readonly ZigBeeChannel _radioChannel;
         private readonly ExtendedPanId _extendedPanId;
+        private readonly IXBeeConfiguration _configuration;
         private bool _coordinatorStarted;
         private bool _initialisationComplete;
 
@@ -32,9 +34,10 @@ namespace ZigBeeNet.Hardware.Digi.XBee
 
         #region constructor
 
-        public ZigBeeDongleXBee(IZigBeePort serialPort)
+        public ZigBeeDongleXBee(IZigBeePort serialPort, IXBeeConfiguration configuration)
         {
             _serialPort = serialPort;
+            _configuration = configuration;
         }
 
         #endregion constructor
@@ -105,7 +108,7 @@ namespace ZigBeeNet.Hardware.Digi.XBee
                 XBeeSetSoftwareResetCommand resetCommand = new XBeeSetSoftwareResetCommand();
                 _frameHandler.SendRequest(resetCommand);
             } while (_frameHandler.EventWait(typeof(XBeeModemStatusEvent)) == null);
-            
+
 
             // Enable the API with escaping
             XBeeSetApiEnableCommand apiEnableCommand = new XBeeSetApiEnableCommand();
@@ -155,7 +158,7 @@ namespace ZigBeeNet.Hardware.Digi.XBee
 
             // Set the ZigBee stack profile
             XBeeSetZigbeeStackProfileCommand stackProfile = new XBeeSetZigbeeStackProfileCommand();
-            stackProfile.SetStackProfile(2);
+            stackProfile.SetStackProfile(_configuration.NetworkSettings.ZigBeeStackProfile);
             _frameHandler.SendRequest(stackProfile);
 
             // Enable Security
@@ -169,7 +172,7 @@ namespace ZigBeeNet.Hardware.Digi.XBee
 
             // Enable coordinator mode
             XBeeSetCoordinatorEnableCommand coordinatorEnable = new XBeeSetCoordinatorEnableCommand();
-            coordinatorEnable.SetEnable(true);
+            coordinatorEnable.SetEnable(_configuration.NetworkSettings.CoordinatorEnable == EnabledDisabledState.Enabled);
             _frameHandler.SendRequest(coordinatorEnable);
 
             // Set the network key
@@ -410,6 +413,7 @@ namespace ZigBeeNet.Hardware.Digi.XBee
                 }
                 catch (InvalidCastException e)
                 {
+                    Log.Debug(e, e.Message);
                     configuration.SetResult(option, ZigBeeStatus.INVALID_ARGUMENTS);
                 }
             }

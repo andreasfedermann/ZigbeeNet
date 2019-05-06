@@ -1,4 +1,5 @@
-﻿using Mono.Options;
+﻿using Microsoft.Extensions.Configuration;
+using Mono.Options;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -10,6 +11,7 @@ using ZigBeeNet.App.Basic;
 using ZigBeeNet.App.Discovery;
 using ZigBeeNet.DAO;
 using ZigBeeNet.Hardware.Digi.XBee;
+using ZigBeeNet.Hardware.Digi.XBee.Internal.Settings;
 using ZigBeeNet.Hardware.TI.CC2531;
 using ZigBeeNet.Tranport.SerialPort;
 using ZigBeeNet.Transaction;
@@ -34,6 +36,12 @@ namespace ZigBeeNet.PlayGround
                .MinimumLevel.Debug()
                .WriteTo.Console()
                .CreateLogger();
+
+            IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+            IConfigurationRoot configurationRoot = configurationBuilder.Build();
 
             bool showHelp = false;
             ZigBeeDongle zigBeeDongle = ZigBeeDongle.TiCc2531;
@@ -69,7 +77,9 @@ namespace ZigBeeNet.PlayGround
                         break;
                     case ZigBeeDongle.DigiXbee:
                         {
-                            dongle = new ZigBeeDongleXBee(zigbeePort);
+                            IXBeeConfiguration xBeeConfiguration = new XBeeConfiguration(configurationRoot);
+                            xBeeConfiguration.Initialize();
+                            dongle = new ZigBeeDongleXBee(zigbeePort, xBeeConfiguration);
                         }
                         break;
                     default:
@@ -365,7 +375,7 @@ namespace ZigBeeNet.PlayGround
             }
 
         }
-}
+    }
 
     public class ConsoleCommandListener : IZigBeeCommandListener
     {
